@@ -80,4 +80,14 @@ export const registerSchema = z.discriminatedUnion(
   { error: "النوع يجب أن يكون student أو owner" },
 );
 
-export type RegisterBody = z.infer<typeof registerSchema>;
+// Login Schema
+export const loginSchema = z.object({
+  email: z
+    .string({ error: "البريد الإلكتروني مطلوب" })
+    .trim()
+    .toLowerCase()
+    .pipe(z.email({ error: "البريد الإلكتروني غير صالح" })),
+  password: z
+    .string({ error: "كلمة المرور مطلوبة" })
+    .min(1, "كلمة المرور مطلوبة"),
+});

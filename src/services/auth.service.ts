@@ -1,11 +1,13 @@
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import { AppError } from "./../utils/app-error.util";
 import { pool } from "../db";
 import { createUser, findUserByEmail } from "../models/user.model";
 import { createStudent } from "../models/student.model";
 import { createOwner } from "../models/owner.model";
 import { DatabaseError } from "pg";
+import { generateJWT } from "../utils/generate-jwt.util";
+
+const INVALID_MESSAGE = "Invalid email or password";
 
 type BaseUser = {
   name: string;
@@ -63,11 +65,6 @@ export async function registerTransaction(data: TxInput): Promise<string> {
 export async function registerUser(
   data: RegisterInput,
 ): Promise<{ user_id: string; token: string }> {
-  const jwtSecret = process.env.JWT_SECRET;
-  if (!jwtSecret) {
-    throw new Error("JWT_SECRET is not defined in .env");
-  }
-
   const existing = await findUserByEmail(data.email);
   if (existing) throw new AppError(409, "Email already registered");
 
@@ -76,9 +73,28 @@ export async function registerUser(
 
   const user_id = await registerTransaction({ ...rest, password_hash });
 
-  const token = jwt.sign({ user_id, role: data.role }, jwtSecret, {
-    expiresIn: "12h",
-  });
+  const token = generateJWT(user_id, rest.role);
 
   return { user_id, token };
+}
+
+// Login
+export async function loginUser(email: string, password: string) {
+  const user = await findUserByEmail(email);
+
+  if (!user) throw new AppError(401, INVALID_MESSAGE);
+
+  const isMatch = await bcrypt.compare(password, user.password_hash);
+
+  if (!isMatch) throw new AppError(401, INVALID_MESSAGE);
+
+  const token = generateJWT(user.user_id, user.role);
+
+  return {
+    token,
+    user_id: user.user_id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+  };
 }
