@@ -13,6 +13,17 @@ export async function findUserByEmail(
   return result.rows[0];
 }
 
+// Get User By ID
+export async function findUserById(
+  user_id: string,
+): Promise<Omit<User, "password_hash"> | undefined> {
+  const result = await pool.query<Omit<User, "password_hash">>(
+    "SELECT user_id, name, email, gender, phone, role FROM app_user WHERE user_id = $1",
+    [user_id],
+  );
+  return result.rows[0];
+}
+
 // Create User
 export async function createUser(
   client: PoolClient,
